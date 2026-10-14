@@ -1,0 +1,71 @@
+# cargo-deny configuration — run with `cargo deny check` (part of `cargo xtask check-all` and CI).
+# Kinora is GPL-3.0-or-later, so every dependency must be GPL-3.0-compatible (PROJECT_BRIEF.md §9).
+
+[graph]
+# Only the platforms we ship. Without this, cargo-deny also checks iOS/Android/etc. crates
+# (e.g. Slint's Skia renderer) that are never built for Kinora.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+# Security vulnerabilities and unsound advisories always fail the check.
+yanked = "deny"
+# "Unmaintained" notices fail only for crates we depend on directly; for transitive
+# crates they are reported but we can't fix them ourselves.
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+# Only licenses that are compatible with distributing Kinora under GPL-3.0-or-later.
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "BSL-1.0",           # Boost; GPL-compatible per FSF (clipboard-win, error-code via Slint)
+    "MPL-2.0",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0-or-later",
+    "GPL-2.0-or-later",
+    "GPL-3.0-only",      # Slint's GPL option
+    "GPL-3.0-or-later",  # Kinora itself
+]
+confidence-threshold = 0.8
+# The allow-list is a policy, not an inventory: don't warn about entries no crate uses yet.
+unused-allowed-license = "allow"
+exceptions = []
+
+[licenses.private]
+ignore = false
+registries = []
+
+[bans]
+# Duplicate versions all come from Slint/winit's own tree today and we can't fix them; the
+# warnings buried real output. Revisit in Phase 8 (binary size) with `cargo deny check bans`.
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true # our internal `path = ...` workspace dependencies
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
