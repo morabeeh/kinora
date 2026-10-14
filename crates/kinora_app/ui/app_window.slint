@@ -1,0 +1,11 @@
+import { Theme } from "theme.slint";
+
+// The main Kinora window. For now it is empty; the viewer arrives in Phase 2.
+export component AppWindow inherits Window {
+    title: @tr("Kinora");
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    min-width: Theme.min-window-width;
+    min-height: Theme.min-window-height;
+    background: Theme.canvas-background;
+}

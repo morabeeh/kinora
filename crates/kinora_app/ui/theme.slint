@@ -1,0 +1,19 @@
+// Design tokens. Never hard-code colours or sizes in components — add a token here.
+// Phase 4 expands this into the full light/dark/Lite theme from docs/design/UI_SPEC.md.
+
+export global Theme {
+    // Viewer canvas: photos look best on a dark background.
+    out property <color> canvas-background: #1c1c1c;
+
+    // 4-px spacing scale.
+    out property <length> space-1: 4px;
+    out property <length> space-2: 8px;
+    out property <length> space-3: 12px;
+    out property <length> space-4: 16px;
+    out property <length> space-6: 24px;
+    out property <length> space-8: 32px;
+
+    // Smallest window we design for: old 1366×768 laptops.
+    out property <length> min-window-width: 640px;
+    out property <length> min-window-height: 400px;
+}
