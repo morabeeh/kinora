@@ -1,0 +1,13 @@
+[package]
+name = "kinora_platform"
+description = "OS integration for Kinora: hardware detection, open-with, trash, single instance."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

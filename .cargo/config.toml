@@ -1,0 +1,3 @@
+# Only aliases here. NEVER add `target-cpu=native` or AVX2 flags (PROJECT_BRIEF.md §4.1, §8.10).
+[alias]
+xtask = "run --quiet --package xtask --"

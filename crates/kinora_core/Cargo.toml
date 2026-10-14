@@ -1,0 +1,13 @@
+[package]
+name = "kinora_core"
+description = "Pure, UI-free logic for Kinora: media items, folder model, navigation, settings, geometry."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
