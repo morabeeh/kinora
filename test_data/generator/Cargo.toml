@@ -1,0 +1,25 @@
+# Fixture generator for test_data/images — a developer tool, never shipped and not part of
+# the main workspace (it needs libheif's x265 encoder and FFmpeg, which CI doesn't have).
+# The generated files are committed, so tests never need this tool. See ../README.md.
+[package]
+name = "kinora-fixture-generator"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1.0.104"
+image = { version = "0.25.10", default-features = false, features = [
+    "jpeg", "png", "gif", "webp", "tiff", "bmp", "ico", "tga", "pnm", "qoi", "hdr", "exr",
+] }
+jpeg-encoder = "0.7.1" # CMYK JPEGs (the `image` crate can't write them)
+libheif-rs = "3.0.0"   # HEIC through libheif + x265
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+indexing_slicing = "warn"
+as_conversions = "warn"

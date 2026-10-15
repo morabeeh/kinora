@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48" viewBox="0 0 64 48">
+  <rect width="64" height="48" fill="#3c7cbc"/>
+  <rect x="0" y="0" width="16" height="12" fill="#e61414"/>
+  <circle cx="40" cy="28" r="12" fill="#14c828" fill-opacity="0.5"/>
+  <image x="48" y="0" width="16" height="12" href="file:///etc/passwd"/>
+</svg>
