@@ -13,7 +13,7 @@ sudo apt install build-essential pkg-config git curl cmake
 sudo apt install libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
                  libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev
 # media libraries (needed from Phase 1: video and HEIC)
-sudo apt install libmpv-dev libheif-dev
+sudo apt install libmpv-dev libheif-dev nasm   # nasm: build-time assembler for the AVIF decoder (rav1d)
 # optional: a much faster linker for dev builds
 sudo apt install mold
 ```
@@ -52,3 +52,20 @@ LIBGL_ALWAYS_SOFTWARE=1 cargo run -p kinora_app        # OpenGL via Mesa llvmpip
 ```
 - [ ] All three windows open, are titled "Kinora", resize smoothly and close cleanly.
 - [ ] If you can log into a Wayland session (Cinnamon has an experimental one), repeat `cargo run` there.
+
+## 5. Phase 1 spike checklist on the Mint PC (≈ 30 min, when you have time)
+The spike lives on branch `spike/phase1`, in its own workspace under `spike/`:
+```bash
+git switch spike/phase1 && cd spike
+cargo build --release
+# S1 renderers (drag each window edge, note which stutter)
+for r in femtovg skia skia-opengl software; do SLINT_BACKEND=winit-$r ./target/release/s1-renderers & done
+# same under Mesa's software OpenGL ("no GPU") and on 2 cores
+LIBGL_ALWAYS_SOFTWARE=1 SLINT_BACKEND=winit-femtovg taskset -c 0,1 ./target/release/s1-renderers
+# S2 video in an OpenGL texture (backend A) — needs test videos (copy them from the Windows PC)
+SLINT_BACKEND=winit-femtovg ./target/release/s2-video-gl ~/Videos/h264-1080p30.mkv
+SLINT_BACKEND=winit-software ./target/release/s4-video-sw ~/Videos/h264-1080p30.mkv
+# Lite simulation: 2 cores + 2 GB cap
+systemd-run --user --scope -p MemoryMax=2G taskset -c 0,1 ./target/release/s4-video-sw ~/Videos/h264-1080p30.mkv
+```
+Note your Mint version (`cat /etc/linuxmint/info`), X11 or Wayland (`echo $XDG_SESSION_TYPE`), and the GL renderer (`glxinfo -B`, package `mesa-utils`). Then tell Claude Code what felt smooth. Those numbers decide the Linux defaults in ADR 0002/0004. (`s3-video-wid` is Windows-only.)

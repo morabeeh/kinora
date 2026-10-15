@@ -3,9 +3,8 @@
 Full spec: `PROJECT_BRIEF.md` (read it when starting a session). This file is the short version.
 
 ## Current phase
-**Phase 0 done (2026-10-14). Next: Phase 1 — technical spike**, waiting for the owner's "go". Never start the next phase without the owner's explicit "go".
-Open item carried into Phase 1: OpenGL resize stutter + 345 MB RSS on Windows/Intel (`docs/perf.md`).
-Phase 1 is done on the owner's Windows PC first; the Mint PC check (`docs/setup-linux.md` §4) comes later.
+**Phase 1 (technical spike) done on Windows (2026-10-15)**: ADR 0002/0004/0005 are *proposed*, waiting for the owner's approval; Linux runs pending (`docs/setup-linux.md` §5). Spike code: branch `spike/phase1` (throwaway, never merged). Never start the next phase without the owner's explicit "go".
+Key Phase 1 results: Windows UI = Skia GPU → software fallback (FemtoVG stutters on Intel); Windows video = mpv child window (backend B), `vo=gpu`+`profile=fast` without a GPU; AVIF = avif-decode/rav1d (needs NASM); see `docs/perf.md`.
 
 ## Owner & decisions (2026-10-14)
 - Owner is an experienced C#/.NET dev, new to Rust → explain in C# terms; add a `docs/learning/` note (≤ 1 page, C# comparison, pointer into our code) for every Rust concept introduced.

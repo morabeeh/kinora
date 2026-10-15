@@ -1,5 +1,6 @@
 # Rust build output
-/target/
+# Rust build output at any depth (main workspace and spike/)
+target/
 **/*.rs.bk
 
 # Fuzzing artifacts (cargo-fuzz)

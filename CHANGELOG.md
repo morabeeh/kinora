@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Phase 1 — technical spike (Windows; Linux pending)
+- Throwaway spike workspace on branch `spike/phase1` (S1 renderers, S2–S4 video backends A/B/C, S5–S7 images/100%/CPU viewport) with runner scripts.
+- Measurements in `docs/perf.md`. ADR 0002 (video engine) revised, plus new ADR 0004 (renderer fallback & Lite mode) and ADR 0005 (image decoders), all **proposed, awaiting approval**.
+- Findings: FemtoVG/OpenGL resize stutter on Intel/Windows; Skia-GPU and the software renderer are smooth; mpv in a child window (B) is the smoothest Windows video path; `vo=gpu` + `profile=fast` for no-GPU PCs; resize debounce for GL video; AVIF via rav1d (NASM needed); scaled JPEG via jpeg-decoder; `image` animation iterators never end on truncated files.
+- Setup docs: libmpv / vcpkg libheif / NASM / FFmpeg on Windows; Mint spike checklist. Learning notes 05–08.
+- `.gitignore`: ignore `target/` at any depth.
+
 ### Phase 0 — environment, repository, skeleton
 - Cargo workspace with seven crates (`kinora_app`, `kinora_core`, `kinora_decode`, `kinora_cache`, `kinora_video`, `kinora_edit`, `kinora_platform`) and `xtask`.
 - Strict workspace lints, release/dev profiles, pinned toolchain (Rust 1.99.0, edition 2024).
