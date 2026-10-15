@@ -297,9 +297,12 @@ pub fn pan_by(
 }
 
 /// `true` when part of the image is outside the window (so arrow keys and drags pan).
+/// Rounding the on-screen size to whole pixels must not count: at "fit" a fraction of a
+/// pixel can be cut off, and the arrow keys must still change the picture then.
 #[must_use]
 pub fn can_pan(plan: &Plan, image: Size) -> bool {
-    plan.source.width < image.w() - EPSILON || plan.source.height < image.h() - EPSILON
+    image.w() * plan.scale - f64::from(plan.output.width) > 0.5
+        || image.h() * plan.scale - f64::from(plan.output.height) > 0.5
 }
 
 /// Converts a non-negative pixel measure to `u32`, rounding and saturating
@@ -433,6 +436,38 @@ mod tests {
         let far = pan_by(&actual, PHOTO, SCREEN, OPTS, (1e6, 0.0));
         let back = pan_by(&far, PHOTO, SCREEN, OPTS, (-10.0, 0.0));
         assert!(close(back.center.0, 960.0 + 10.0));
+    }
+
+    #[test]
+    fn fit_never_counts_as_pannable() {
+        // Found in the 500-photo flick test: 2738 × 0.657 rounds to 1799 px on screen,
+        // which made the arrow keys pan by a fraction of a pixel instead of navigating.
+        let photo = Size::new(2738, 1825);
+        for window in [
+            Size::new(1920, 1200),
+            Size::new(1366, 705),
+            Size::new(1001, 999),
+        ] {
+            let p = plan(photo, window, &View::fit(photo), OPTS);
+            assert!(!can_pan(&p, photo), "{window:?}");
+        }
+        let zoomed = View {
+            zoom: Zoom::Scale(1.0),
+            center: (1369.0, 912.0),
+        };
+        assert!(can_pan(
+            &plan(photo, Size::new(1920, 1200), &zoomed, OPTS),
+            photo
+        ));
+    }
+
+    proptest! {
+        #[test]
+        fn fit_is_never_pannable(iw in 1u32..20_000, ih in 1u32..20_000, ww in 1u32..5_000, wh in 1u32..5_000) {
+            let image = Size::new(iw, ih);
+            let p = plan(image, Size::new(ww, wh), &View::fit(image), OPTS);
+            prop_assert!(!can_pan(&p, image));
+        }
     }
 
     #[test]
