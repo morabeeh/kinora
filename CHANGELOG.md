@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Phase 2 — core image viewer (Windows verified; Linux via CI only)
+- **Viewer:** opens a file from the command line, drag-and-drop or Ctrl+O; lists its folder (natural sort like Explorer/Nemo, hidden files skipped) and flicks through it with Left/Right, PageUp/PageDown, Home/End, mouse back/forward, horizontal touchpad swipes and the edge buttons. Wrap-around setting with an "end of folder" hint.
+- **Zoom/pan:** fit (no enlarging by default), wheel/`+`/`-` zoom anchored at the cursor with stops at 100% and fit, Ctrl+0 / Ctrl+1, double-click toggles fit ↔ 100%, drag and arrow-key panning, F11 fullscreen. 100% is one image pixel per physical screen pixel.
+- **Formats:** JPEG, PNG/APNG, GIF, WebP, HEIC (libheif), AVIF (rav1d), JPEG XL, BMP, ICO, TIFF, TGA, PNM, QOI, DDS, HDR/EXR (tone-mapped), SVG; EXIF orientation, ICC → sRGB, transparency on a checkerboard, animations with pause and frame step.
+- **Speed:** background decode pool with priorities and cancellation, direction-aware preloading, byte-budgeted cache, DCT-scaled JPEG decoding, embedded-thumbnail first picture in Lite mode, viewport render thread with a half-size pyramid.
+- **Low-end PCs:** hardware probe (cores incl. affinity, RAM, no-GPU detection via DXGI / Mesa hints), Lite/Typical/High budgets, automatic software renderer without a GPU, `--lite`, `--renderer`, `KINORA_SIMULATE=lite`.
+- **Robustness:** a damaged file shows an error card, never a crash; size checks before allocating; panics in decoders caught; container completeness check (fixes an `avif-parse` panic on truncated files); `heif.dll` delay-loaded on Windows.
+- **Platform:** single instance (named pipe / Unix socket), settings in `settings.toml` (atomic save), daily log files, `--bench-startup`.
+- **Tooling:** `cargo xtask run` and `gen-folder`; 205 KB of generated CC0 fixtures; CI installs NASM and libheif on all three OSes.
+- Measurements in `docs/perf.md` (Phase 2). Budgets missed with the Skia renderer (start-up ~350 ms, ~300 MB) and binary size (34.1 MB vs 30 MB): see the proposals there.
+- Learning notes 09–16.
+
 ### Phase 1 — technical spike (Windows; Linux pending)
 - Throwaway spike workspace on branch `spike/phase1` (S1 renderers, S2–S4 video backends A/B/C, S5–S7 images/100%/CPU viewport) with runner scripts.
 - Measurements in `docs/perf.md`. ADR 0002 (video engine) revised, plus new ADR 0004 (renderer fallback & Lite mode) and ADR 0005 (image decoders), **accepted** for Windows (ADR 0005 fully accepted). Release-binary budget raised from 25 MB to 30 MB.

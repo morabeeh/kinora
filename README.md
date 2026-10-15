@@ -7,7 +7,7 @@ A fast, calm, free and open-source **photo and video viewer** for Linux, Windows
 - Runs well on old PCs without a usable GPU, thanks to a CPU-rendering fallback and Lite mode.
 - **No AI, no cloud, no accounts, no ads, no telemetry, no network access.**
 
-> **Status:** early development (Phase 0 — project skeleton). Nothing to download yet.
+> **Status:** early development (Phase 2 — the image viewer works; video, polish, file actions and editing come next). Nothing to download yet.
 
 ## Building from source
 
@@ -15,7 +15,8 @@ A fast, calm, free and open-source **photo and video viewer** for Linux, Windows
 - Linux Mint / Ubuntu / Debian: see [docs/setup-linux.md](docs/setup-linux.md)
 
 ```bash
-cargo run -p kinora_app
+cargo xtask run -- path/to/photo.jpg   # Windows: finds vcpkg/NASM for you
+cargo run -p kinora_app -- path/to/photo.jpg
 cargo xtask check-all
 ```
 
