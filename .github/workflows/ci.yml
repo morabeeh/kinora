@@ -29,15 +29,47 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Ubuntu 24.04 is the base of Linux Mint 22. These are the packages Slint's winit
-      # backend needs; docs/setup-linux.md lists the same set for developers.
+      # Ubuntu 24.04 is the base of Linux Mint 22. Slint's winit backend needs the X11/
+      # Wayland/font packages; NASM assembles the AVIF decoder's SIMD code (ADR 0005);
+      # libheif (+ its HEVC decoder plugin) is linked dynamically for HEIC.
+      # docs/setup-linux.md lists the same set for developers.
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             pkg-config libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
-            libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev
+            libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev \
+            nasm libheif-dev libheif-plugin-libde265
+
+      - name: Install macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install nasm libheif pkgconf
+
+      # Windows: NASM from Chocolatey; libheif as DLLs from the runner's vcpkg (only the
+      # core library and its HEVC decoder; the x265 encoder isn't needed). The vcpkg
+      # result is cached because building it takes a few minutes.
+      - name: Install NASM (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nasm --no-progress -y
+          "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Cache vcpkg libheif (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-libheif-core-${{ runner.os }}-v1
+
+      - name: Install libheif (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "libheif[core]:x64-windows" --disable-metrics
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       # rust-toolchain.toml pins the exact version; rustup installs it on demand.
       - name: Install pinned Rust toolchain
