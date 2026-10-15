@@ -2980,6 +2980,9 @@ dependencies = [
 [[package]]
 name = "kinora_cache"
 version = "0.1.0"
+dependencies = [
+ "tracing",
+]
 
 [[package]]
 name = "kinora_core"
