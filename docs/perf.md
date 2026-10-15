@@ -103,3 +103,20 @@ Findings:
 2. Its cost is the **airspace rule**: nothing can be drawn over the video, so controls go below it. Overlay chrome (fullscreen auto-hide bar) would need a separate transparent top-level window over the video. Not tested yet.
 3. Lite mode on Windows must switch mpv to **`vo=gpu` + `profile=fast`**. The default `gpu-next` is far too heavy when Direct3D falls back to the CPU.
 4. Still pending: a real old CPU (this CPU's cores are roughly 3× faster than a Lite-tier Celeron), and Linux (X11 `wid`; Wayland has none, so backend C).
+
+### S4 — backend C (mpv software render API → CPU buffer ≤ 854×480 → Slint image, on a render thread)
+UI renderer: Slint `software`. CPU decoding (`hwdec=no`), `sw-fast=yes`.
+
+| Case | Video fps | mpv SW render p50 / p95 | Peak RSS | CPU | First frame |
+|---|---|---|---|---|---|
+| 1080p30 H.264, all cores | 30.1 | 0.71 / 0.98 ms | 200 MB | 1.2% | 82 ms |
+| 1080p30 H.264, 2 cores | 30.0 | 1.60 / 1.80 ms | **102 MB** | **14%** | 84 ms |
+| 1080p30 HEVC, 2 cores | 30.0 | 1.69 / 2.02 ms | 107 MB | 15% | 75 ms |
+| 1080p60 H.264, 2 cores | 59.8 | 1.65 / 2.89 ms | 104 MB | 25% | 75 ms |
+
+Owner's eye test (2 cores, maximized window): motion **smooth**, picture softer but **acceptable for a fallback**, resize smooth, controls work (drawn on top of the video).
+
+Findings:
+1. Backend C is far cheaper than expected, and cheaper than backend B under WARP (14% vs 33% of 2 cores at 1080p30). Rendering at ≤ 854×480 and letting Slint's software renderer scale up is the cheapest path measured. It works on every platform (including Wayland) and allows overlay controls.
+2. Its cost is picture quality (upscaled from 480p) and CPU-side YUV→RGB conversion, which matters more on a real Celeron.
+3. Measuring on a real old CPU is still pending.

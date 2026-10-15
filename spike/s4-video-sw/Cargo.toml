@@ -1,0 +1,21 @@
+[package]
+name = "s4-video-sw"
+description = "THROWAWAY spike S4: mpv software render API into a CPU buffer shown by Slint (video backend C)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+libmpv2 = { workspace = true }
+libmpv2-sys = { workspace = true }
+slint = { workspace = true, features = ["renderer-software", "renderer-skia"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[lints]
+workspace = true
