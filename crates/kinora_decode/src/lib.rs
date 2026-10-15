@@ -99,6 +99,16 @@ const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 /// # Errors
 /// See [`DecodeError`].
 pub fn decode_file(path: &Path, options: &DecodeOptions) -> Result<DecodedImage, DecodeError> {
+    let bytes = read_file(path)?;
+    let extension = path.extension().and_then(|ext| ext.to_str());
+    decode(&bytes, extension, options)
+}
+
+/// Reads a whole file into memory, refusing absurdly large files.
+///
+/// # Errors
+/// [`DecodeError::Io`] if reading fails, [`DecodeError::TooLarge`] above 2 GiB.
+pub fn read_file(path: &Path) -> Result<Vec<u8>, DecodeError> {
     let length = std::fs::metadata(path)?.len();
     if length > MAX_FILE_BYTES {
         return Err(DecodeError::TooLarge {
@@ -106,9 +116,7 @@ pub fn decode_file(path: &Path, options: &DecodeOptions) -> Result<DecodedImage,
             height: 0,
         });
     }
-    let bytes = std::fs::read(path)?;
-    let extension = path.extension().and_then(|ext| ext.to_str());
-    decode(&bytes, extension, options)
+    Ok(std::fs::read(path)?)
 }
 
 /// Decodes a file already in memory.

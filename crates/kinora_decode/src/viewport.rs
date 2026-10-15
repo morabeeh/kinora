@@ -2,8 +2,6 @@
 //! and scale it to the exact on-screen size, so every UI renderer only copies pixels 1:1.
 //! Fit and 100% therefore look identical with the GPU and the software renderer.
 
-use std::sync::Arc;
-
 use fast_image_resize as fr;
 use kinora_core::viewport::{Plan, Size};
 
@@ -149,65 +147,58 @@ fn composite(frame: &mut Rgba8Image, background: Background) {
 
 /// Pre-scaled halves of a picture (½, ¼, …), built on demand. Zoomed-out views of huge
 /// pictures resample from the nearest level instead of the full picture, which is what
-/// makes "fit" fast on slow CPUs (ADR 0004, perf.md S7).
-#[derive(Debug, Clone)]
+/// makes "fit" fast on slow CPUs (ADR 0004, perf.md S7). The base picture itself is not
+/// stored here (it is shared elsewhere); create a new pyramid when the picture changes.
+#[derive(Debug, Default)]
 pub struct Pyramid {
-    levels: Vec<Arc<Rgba8Image>>,
-    has_alpha: bool,
+    levels: Vec<Rgba8Image>,
 }
 
 impl Pyramid {
-    /// A pyramid whose level 0 is `base`.
+    /// An empty pyramid.
     #[must_use]
-    pub fn new(base: Arc<Rgba8Image>, has_alpha: bool) -> Self {
-        Self {
-            levels: vec![base],
-            has_alpha,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    /// Level 0.
+    /// Bytes used by the built levels.
     #[must_use]
-    pub fn base(&self) -> Option<&Arc<Rgba8Image>> {
-        self.levels.first()
-    }
-
-    /// Bytes used by the extra levels (level 0 is owned elsewhere).
-    #[must_use]
-    pub fn extra_bytes(&self) -> u64 {
+    pub fn byte_size(&self) -> u64 {
         self.levels
             .iter()
-            .skip(1)
-            .map(|level| level.byte_size())
+            .map(Rgba8Image::byte_size)
             .fold(0, u64::saturating_add)
     }
 
-    /// The smallest level that still has at least `scale` pixels per full-size pixel, so
-    /// drawing at `scale` only ever shrinks it. Missing levels are built (each is half the
-    /// previous one).
-    pub fn level_for(
-        &mut self,
+    /// The smallest of `base` and its halves that still has at least `scale` pixels per
+    /// full-size pixel, so drawing at `scale` only ever shrinks it. Missing halves are built.
+    pub fn level_for<'a>(
+        &'a mut self,
         renderer: &mut ViewportRenderer,
+        base: &'a Rgba8Image,
+        has_alpha: bool,
         source_size: Size,
         scale: f64,
-    ) -> Option<Arc<Rgba8Image>> {
+    ) -> &'a Rgba8Image {
         let ratio =
             |level: &Rgba8Image| f64::from(level.width()) / f64::from(source_size.width.max(1));
         loop {
-            let last = self.levels.last()?;
+            let last = self.levels.last().unwrap_or(base);
             if ratio(last) / 2.0 < scale || last.width() < 128 || last.height() < 128 {
                 break;
             }
             let (w, h) = (last.width().div_ceil(2), last.height().div_ceil(2));
-            let half = crate::resize::resize_to(&mut renderer.resizer, last, w, h, self.has_alpha)?;
-            self.levels.push(Arc::new(half));
+            let Some(half) = crate::resize::resize_to(&mut renderer.resizer, last, w, h, has_alpha)
+            else {
+                break;
+            };
+            self.levels.push(half);
         }
         self.levels
             .iter()
             .rev()
             .find(|level| ratio(level) >= scale)
-            .or_else(|| self.levels.first())
-            .cloned()
+            .unwrap_or(base)
     }
 }
 
@@ -291,18 +282,16 @@ mod tests {
     #[test]
     fn pyramid_picks_the_smallest_level_above_the_scale() {
         let mut renderer = ViewportRenderer::new();
-        let base = Arc::new(gradient(1024, 512));
-        let mut pyramid = Pyramid::new(Arc::clone(&base), false);
+        let base = gradient(1024, 512);
         let full = base.size();
-        assert_eq!(
-            pyramid.level_for(&mut renderer, full, 1.0).unwrap().width(),
-            1024
-        );
-        assert_eq!(pyramid.extra_bytes(), 0, "nothing built for 100%");
-        let level = pyramid.level_for(&mut renderer, full, 0.3).unwrap();
-        assert_eq!(level.width(), 512, "½ ≥ 0.3 > ¼");
-        let level = pyramid.level_for(&mut renderer, full, 0.1).unwrap();
-        assert_eq!(level.width(), 128);
-        assert!(pyramid.extra_bytes() > 0);
+        let mut pyramid = Pyramid::new();
+        let width = |p: &mut Pyramid, r: &mut ViewportRenderer, scale| {
+            p.level_for(r, &base, false, full, scale).width()
+        };
+        assert_eq!(width(&mut pyramid, &mut renderer, 1.0), 1024);
+        assert_eq!(pyramid.byte_size(), 0, "nothing built for 100%");
+        assert_eq!(width(&mut pyramid, &mut renderer, 0.3), 512, "½ ≥ 0.3 > ¼");
+        assert_eq!(width(&mut pyramid, &mut renderer, 0.1), 128);
+        assert!(pyramid.byte_size() > 0);
     }
 }

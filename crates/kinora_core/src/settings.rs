@@ -144,6 +144,10 @@ pub struct DetectedHardware {
     pub gl_renderer: Option<String>,
     /// `true` if that renderer is a software rasteriser.
     pub software_gl: bool,
+    /// Size of the monitor Kinora last ran on (physical pixels), so the first picture can
+    /// be decoded at the right size before the window exists.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen_size: Option<[u32; 2]>,
 }
 
 /// The settings file could not be read or written.
@@ -202,6 +206,7 @@ mod tests {
         s.performance.image_cache_mb = Some(300);
         s.detected.gl_renderer = Some(String::from("llvmpipe (LLVM 17.0.6, 256 bits)"));
         s.detected.software_gl = true;
+        s.detected.screen_size = Some([2560, 1440]);
         let text = s.to_toml().unwrap();
         assert!(text.contains("wheel = \"navigate\""), "{text}");
         assert!(text.contains("key = \"date-taken\""), "{text}");

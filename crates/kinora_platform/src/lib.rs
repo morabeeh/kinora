@@ -28,6 +28,22 @@ mod sys_linux;
 #[allow(unsafe_code)]
 mod sys_windows;
 
+/// `true` if the shared library `name` can be loaded. On Windows the library is loaded and
+/// kept (Kinora delay-loads `heif.dll`, so it starts even when the DLL is missing); on other
+/// systems shared libraries are linked normally, so this always returns `true`.
+#[must_use]
+pub fn library_available(name: &str) -> bool {
+    #[cfg(windows)]
+    {
+        sys_windows::load_library(name)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = name;
+        true
+    }
+}
+
 /// Parsers for Linux `/proc` files. They are plain text functions, compiled and tested on
 /// every OS so Windows CI checks them too.
 mod proc_text;

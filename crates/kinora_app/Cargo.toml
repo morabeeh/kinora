@@ -12,10 +12,22 @@ default-run = "kinora"
 name = "kinora"
 path = "src/main.rs"
 
+[features]
+default = ["heif"]
+# HEIC/HEIF through libheif (LGPL, dynamically linked). On Windows heif.dll is delay-loaded
+# (see build.rs), so Kinora still starts without it.
+heif = ["kinora_decode/heif"]
+
 [dependencies]
+kinora_cache = { workspace = true }
+kinora_core = { workspace = true }
+kinora_decode = { workspace = true, default-features = false }
+kinora_platform = { workspace = true }
 anyhow = { workspace = true }
+rfd = { workspace = true }
 slint = { workspace = true }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 # GPU renderer per OS (ADR 0004); the software renderer comes from the workspace entry.

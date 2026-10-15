@@ -2,6 +2,7 @@
 
 use kinora_core::hardware::Gpu;
 use windows_sys::Win32::Foundation::HANDLE;
+use windows_sys::Win32::System::LibraryLoader::LoadLibraryW;
 use windows_sys::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 use windows_sys::Win32::System::RemoteDesktop::ProcessIdToSessionId;
 use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
@@ -92,6 +93,18 @@ pub fn allow_foreground_activation() {
     if ok == 0 {
         tracing::debug!("AllowSetForegroundWindow failed (not the foreground process)");
     }
+}
+
+/// Loads a DLL by name (normal Windows search order) and keeps it loaded. Used before the
+/// first call into a delay-loaded DLL such as `heif.dll`: if this fails, Kinora reports
+/// "not available" instead of crashing on the first call.
+pub fn load_library(name: &str) -> bool {
+    let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+    // SAFETY: `wide` is a NUL-terminated UTF-16 string that outlives the call. Loading runs
+    // the DLL's initialisation code; we only load libraries Kinora itself links against.
+    let module = unsafe { LoadLibraryW(wide.as_ptr()) };
+    // The module stays loaded for the rest of the process on purpose (no FreeLibrary).
+    !module.is_null()
 }
 
 /// PCI vendor and device id of WARP ("Microsoft Basic Render Driver").

@@ -1,11 +1,330 @@
 import { Theme } from "theme.slint";
+export { Theme }
 
-// The main Kinora window. For now it is empty; the viewer arrives in Phase 2.
+// Why the current file can't be shown. The texts live here (not in Rust) so they go
+// through the translation system from day one (brief §5.10).
+export enum ErrorKind {
+    none,
+    not-found,
+    no-permission,
+    unreadable,
+    empty,
+    unknown-format,
+    unavailable,
+    too-large,
+    damaged,
+    decoder-failed,
+    video-not-yet,
+}
+
+// A small text button used by the empty screen and the error card.
+component TextButton inherits Rectangle {
+    in property <string> text;
+    callback clicked;
+
+    height: 32px;
+    min-width: label.preferred-width + 2 * Theme.space-4;
+    border-radius: Theme.radius-small;
+    background: area.has-hover ? Theme.button-hover : Theme.button-background;
+    border-width: 1px;
+    border-color: Theme.bar-border;
+
+    label := Text {
+        text: root.text;
+        color: Theme.text-primary;
+        font-size: Theme.font-body;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+}
+
+// The round "previous"/"next" buttons at the window edges (shown on hover).
+component EdgeButton inherits Rectangle {
+    in property <string> glyph;
+    in property <string> label;
+    callback clicked;
+
+    width: Theme.edge-button-size;
+    height: Theme.edge-button-size;
+    border-radius: self.width / 2;
+    background: area.has-hover ? Theme.button-hover : Theme.button-background;
+    border-width: 1px;
+    border-color: Theme.bar-border;
+
+    Text {
+        text: root.glyph;
+        color: Theme.text-primary;
+        font-size: 28px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+}
+
 export component AppWindow inherits Window {
-    title: @tr("Kinora");
+    // ---- State set from Rust -------------------------------------------------------
+    // The viewport frame: already scaled to its exact on-screen size in physical pixels
+    // (ADR 0004), so it is drawn 1:1 with `phx` units and `pixelated`.
+    in property <image> frame;
+    in property <int> frame-x;
+    in property <int> frame-y;
+    in property <int> frame-width;
+    in property <int> frame-height;
+    in property <bool> has-picture;
+    in property <bool> loading;
+    in property <string> file-name;
+    in property <int> position; // 1-based; 0 = nothing open
+    in property <int> count;
+    in property <int> zoom-percent;
+    in property <ErrorKind> error-kind: ErrorKind.none;
+    in property <string> error-format;
+    in property <string> error-detail;
+    in property <int> end-hint; // 1 = end of folder, -1 = start of folder, 0 = hidden
+    in property <bool> can-pan;
+    in property <bool> drop-hover;
+
+    // ---- Events for Rust ------------------------------------------------------------
+    callback key(string, bool, bool, bool) -> bool; // text, ctrl, shift, alt → handled?
+    callback wheel(float, float, float, float, bool); // dx, dy, x, y (logical px), ctrl
+    callback press(float, float);
+    callback drag(float, float); // offset since press (logical px)
+    callback release();
+    callback double-click(float, float);
+    callback navigate(int);
+    callback open-file();
+    callback resized();
+
+    changed width => { root.resized(); }
+    changed height => { root.resized(); }
+
+    title: root.file-name == "" ? @tr("Kinora") : @tr("{} – Kinora", root.file-name);
     preferred-width: 1280px;
     preferred-height: 800px;
     min-width: Theme.min-window-width;
     min-height: Theme.min-window-height;
     background: Theme.canvas-background;
+    forward-focus: keys;
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            if (root.key(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt)) {
+                return accept;
+            }
+            reject
+        }
+
+        canvas := TouchArea {
+            mouse-cursor: root.can-pan ? (self.pressed ? MouseCursor.grabbing : MouseCursor.grab) : MouseCursor.default;
+            scroll-event(event) => {
+                root.wheel(event.delta-x / 1px, event.delta-y / 1px, self.mouse-x / 1px, self.mouse-y / 1px, event.modifiers.control);
+                accept
+            }
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) {
+                    if (event.button == PointerEventButton.left) {
+                        root.press(self.mouse-x / 1px, self.mouse-y / 1px);
+                    } else if (event.button == PointerEventButton.back) {
+                        root.navigate(-1);
+                    } else if (event.button == PointerEventButton.forward) {
+                        root.navigate(1);
+                    }
+                } else if (event.kind == PointerEventKind.up && event.button == PointerEventButton.left) {
+                    root.release();
+                }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.drag((self.mouse-x - self.pressed-x) / 1px, (self.mouse-y - self.pressed-y) / 1px);
+                }
+            }
+            double-clicked => {
+                root.double-click(self.mouse-x / 1px, self.mouse-y / 1px);
+            }
+
+            Image {
+                visible: root.has-picture && !root.loading;
+                x: root.frame-x * 1phx;
+                y: root.frame-y * 1phx;
+                width: root.frame-width * 1phx;
+                height: root.frame-height * 1phx;
+                source: root.frame;
+                image-fit: fill;
+                image-rendering: pixelated;
+                accessible-role: image;
+                accessible-label: root.file-name;
+            }
+        }
+
+        // Loading: shown only when a picture takes longer than a moment (no flicker).
+        if root.loading: Text {
+            text: @tr("Loading…");
+            color: Theme.text-secondary;
+            font-size: Theme.font-body;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        // Empty start screen.
+        if root.count == 0 && root.error-kind == ErrorKind.none: VerticalLayout {
+            alignment: center;
+            spacing: Theme.space-3;
+            Text {
+                text: @tr("Open a photo");
+                color: Theme.text-primary;
+                font-size: Theme.font-title;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: @tr("Press Ctrl+O, or drop a picture here.");
+                color: Theme.text-secondary;
+                font-size: Theme.font-body;
+                horizontal-alignment: center;
+            }
+            HorizontalLayout {
+                alignment: center;
+                TextButton {
+                    text: @tr("Open…");
+                    clicked => { root.open-file(); }
+                }
+            }
+        }
+
+        // Error card: the file can't be shown (never a crash, brief §5.1).
+        if root.error-kind != ErrorKind.none: Rectangle {
+            width: min(440px, root.width - 2 * Theme.space-6);
+            height: card-layout.preferred-height;
+            x: (root.width - self.width) / 2;
+            y: (root.height - self.height) / 2;
+            background: Theme.card-background;
+            border-radius: Theme.radius;
+            border-width: 1px;
+            border-color: Theme.card-border;
+
+            card-layout := VerticalLayout {
+                padding: Theme.space-6;
+                spacing: Theme.space-2;
+                Text {
+                    text: root.error-kind == ErrorKind.not-found ? @tr("This file no longer exists")
+                        : root.error-kind == ErrorKind.no-permission ? @tr("Kinora isn't allowed to read this file")
+                        : root.error-kind == ErrorKind.unreadable ? @tr("This file could not be read")
+                        : root.error-kind == ErrorKind.empty ? @tr("This file is empty")
+                        : root.error-kind == ErrorKind.unknown-format ? @tr("This isn't a picture Kinora can open")
+                        : root.error-kind == ErrorKind.unavailable ? @tr("{} pictures can't be opened on this computer", root.error-format)
+                        : root.error-kind == ErrorKind.too-large ? @tr("This picture is too large to open")
+                        : root.error-kind == ErrorKind.damaged ? @tr("This {} file is damaged or incomplete", root.error-format)
+                        : root.error-kind == ErrorKind.video-not-yet ? @tr("Videos can't be played yet")
+                        : @tr("Kinora couldn't read this {} file", root.error-format);
+                    color: Theme.text-primary;
+                    font-size: Theme.font-title;
+                    wrap: word-wrap;
+                }
+                Text {
+                    text: root.file-name;
+                    color: Theme.text-secondary;
+                    font-size: Theme.font-body;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.error-kind == ErrorKind.unavailable ? @tr("The library that reads these files is not installed.")
+                        : root.error-kind == ErrorKind.video-not-yet ? @tr("Video support is coming in a later version of Kinora.")
+                        : root.error-detail;
+                    color: Theme.text-secondary;
+                    font-size: Theme.font-small;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        // Top bar: file name, position in the folder, zoom.
+        if root.count > 0: Rectangle {
+            y: 0;
+            height: Theme.bar-height;
+            background: Theme.bar-background;
+
+            HorizontalLayout {
+                padding-left: Theme.space-4;
+                padding-right: Theme.space-4;
+                spacing: Theme.space-4;
+                Text {
+                    text: root.file-name;
+                    color: Theme.text-primary;
+                    font-size: Theme.font-body;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text: @tr("{} / {}", root.position, root.count);
+                    color: Theme.text-secondary;
+                    font-size: Theme.font-body;
+                    vertical-alignment: center;
+                }
+                Text {
+                    visible: root.has-picture;
+                    text: @tr("{}%", root.zoom-percent);
+                    color: Theme.text-secondary;
+                    font-size: Theme.font-body;
+                    vertical-alignment: center;
+                    min-width: 48px;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+
+        // Previous / next buttons at the edges, shown while the mouse is near them.
+        if root.count > 1 && canvas.has-hover && canvas.mouse-x < 120px: EdgeButton {
+            x: Theme.space-4;
+            y: (root.height - self.height) / 2;
+            glyph: "‹";
+            label: @tr("Previous");
+            clicked => { root.navigate(-1); }
+        }
+        if root.count > 1 && canvas.has-hover && canvas.mouse-x > root.width - 120px: EdgeButton {
+            x: root.width - self.width - Theme.space-4;
+            y: (root.height - self.height) / 2;
+            glyph: "›";
+            label: @tr("Next");
+            clicked => { root.navigate(1); }
+        }
+
+        // "End of folder" hint (wrap-around off).
+        if root.end-hint != 0: Rectangle {
+            width: hint.preferred-width + 2 * Theme.space-4;
+            height: 32px;
+            x: (root.width - self.width) / 2;
+            y: root.height - self.height - Theme.space-8;
+            border-radius: Theme.radius;
+            background: Theme.bar-background;
+            hint := Text {
+                text: root.end-hint > 0 ? @tr("End of folder") : @tr("Start of folder");
+                color: Theme.text-primary;
+                font-size: Theme.font-body;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // Drop target highlight while a file is dragged over the window.
+        if root.drop-hover: Rectangle {
+            border-width: 3px;
+            border-color: Theme.accent;
+        }
+    }
 }

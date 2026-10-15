@@ -1,9 +1,30 @@
 // Design tokens. Never hard-code colours or sizes in components — add a token here.
 // Phase 4 expands this into the full light/dark/Lite theme from docs/design/UI_SPEC.md.
+// Every effect has a Lite variant (brief §6): translucency → solid fills, no animations.
 
 export global Theme {
+    // Set from Rust: Lite mode (software renderer or Lite-tier PC).
+    in property <bool> lite: false;
+
     // Viewer canvas: photos look best on a dark background.
     out property <color> canvas-background: #1c1c1c;
+
+    // Floating bars and buttons over the picture.
+    out property <color> bar-background: lite ? #202020 : #000000a6;
+    out property <color> bar-border: #ffffff1f;
+    out property <color> button-background: lite ? #2c2c2c : #1c1c1cb3;
+    out property <color> button-hover: lite ? #3a3a3a : #2c2c2ce0;
+    out property <color> card-background: #262626;
+    out property <color> card-border: #3a3a3a;
+    out property <color> accent: #4ca0e0;
+
+    out property <color> text-primary: #f2f2f2;
+    out property <color> text-secondary: #b8b8b8;
+
+    // Typography.
+    out property <length> font-small: 12px;
+    out property <length> font-body: 14px;
+    out property <length> font-title: 20px;
 
     // 4-px spacing scale.
     out property <length> space-1: 4px;
@@ -12,6 +33,11 @@ export global Theme {
     out property <length> space-4: 16px;
     out property <length> space-6: 24px;
     out property <length> space-8: 32px;
+
+    out property <length> radius: 8px;
+    out property <length> radius-small: 4px;
+    out property <length> bar-height: 40px;
+    out property <length> edge-button-size: 48px;
 
     // Smallest window we design for: old 1366×768 laptops.
     out property <length> min-window-width: 640px;
