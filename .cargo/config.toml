@@ -1,3 +1,9 @@
-# Only aliases here. NEVER add `target-cpu=native` or AVX2 flags (PROJECT_BRIEF.md §4.1, §8.10).
+# Only aliases and portable build settings here. NEVER add `target-cpu=native` or AVX2
+# flags (PROJECT_BRIEF.md §4.1, §8.10).
 [alias]
 xtask = "run --quiet --package xtask --"
+
+[env]
+# libheif is linked dynamically (LGPL, PROJECT_BRIEF.md §9.5). On Windows this tells the
+# `vcpkg` build helper to use vcpkg's DLL build; it has no effect elsewhere.
+VCPKGRS_DYNAMIC = "1"

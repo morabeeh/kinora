@@ -166,3 +166,34 @@ At **150% Windows scaling** (144 DPI), a 1-px checkerboard shown at "100%" (1 im
 
 Owner's eye test with the **software renderer on 2 cores**: zoom (anchored at the cursor) and pan felt **smooth at all zoom levels**.
 Finding: zoomed-out views of huge images are the expensive case (≈ 20–35 ms here, so ≈ 3× that on a Lite CPU). Phase 2 should keep a **pre-scaled pyramid** (½, ¼, … of the decoded image) and resample from the nearest level, plus cache the last fit frame.
+
+## Phase 2 — image viewer (2026-10-15, Windows dev machine, release builds)
+How it was measured (repeatable):
+- `kinora --bench-startup <file>` logs "native window ready", "shown" and "first picture on screen" (all from process start, plus RSS), then quits. 5 runs each; the table gives typical values.
+- Flicking: a script presses Right/Home/End in the running app and reads the `shown … cached= ms= rss_mb=` log lines. Test folder: `cargo xtask gen-folder <dir> --count 500` (1.2 GB of mixed formats, 2–12 MP JPEGs with noise, some EXIF-rotated, 10 broken files).
+- "Simulated Lite" = `KINORA_SIMULATE=lite` (2 cores, 2 GiB, no GPU → software renderer + Lite budgets: 1 decode worker, preload 1 ahead, 204 MB cache) **plus** CPU affinity limited to 2 cores. This CPU is roughly 3× faster per core than a Lite-tier Celeron, so Lite times on real old hardware will be higher.
+- Monitor 2560×1600 at 150%: a 12 MP photo needs ≥ 2133×1600 pixels for "fit", so it is decoded at full size here (on a 1080p screen it would use ½-scale DCT decoding).
+
+| Metric | Skia (GPU) | Software renderer | Simulated Lite | Budget (Typical / Lite) |
+|---|---|---|---|---|
+| Launch → first picture, 12 MP JPEG (4000×3000, warm) | **~350 ms** ⚠️ | ~128 ms | ~129 ms | ≤ 250 ms / ≤ 600 ms |
+| … of which: native window ready | ~285 ms | ~35 ms | ~35 ms | — |
+| … of which: decode (in parallel with window creation) | ~95 ms | ~95 ms | ~97 ms | — |
+| Next/previous, preloaded | 0 ms (cache hit) | 0 ms | 0 ms | ≤ 16 ms / ≤ 50 ms |
+| Jump to a non-preloaded 12 MP JPEG (End/Home) | 74 ms | 97 ms | 91 ms | ≤ 120 ms / ≤ 350 ms |
+| Flicking 40 photos at a key every 150 ms | 40/40 shown, 39 from cache | — | 30/30 from cache | no visible delay |
+| Flicking 60 photos at key-repeat speed (~30 ms) | 60/60 shown, 62 decode jobs | — | 60/60 shown (17 decoded on demand), 61 jobs | stale work dropped |
+| Folder of 10,000 files: list ready | 8 ms | 9 ms | — | ≤ 150 ms / ≤ 500 ms (HDD not tested) |
+| RSS, one 12 MP picture open | **~300 MB** ⚠️ | ~83 MB | ~83 MB | ≤ 200 MB / ≤ 150 MB |
+| RSS after flicking (cache filled) | ~450 MB (192 MB cache) | ~180 MB | ~145 MB (88 MB cache) | cache ≤ budget ✔ |
+| 24 MP JPEG (5656×4242): screen-sized decode / full decode on zoom-in | 113 ms / 145 ms | — | 132 ms / 147 ms | — |
+| Viewport frame while zooming and panning a 24 MP photo (p50 / p95 / max) | 7 / 28 / 40 ms | — | 6 / 27 / 46 ms | 60 fps / ≥ 30 fps pan |
+| Release binary | **34.1 MB** ⚠️ | (same binary) | (same binary) | ≤ 30 MB |
+
+Decode times inside the app (simulated Lite, 1 worker, screen-sized targets): JPEG median 45 ms / max 96 ms (2–12 MP); PNG/WebP/BMP/TIFF ≈ 2 MP 7–21 ms.
+
+**Missed budgets (not hidden):**
+1. **Skia start-up and memory.** Creating Skia's GPU surface (through wgpu/Direct3D on this hybrid Intel + NVIDIA laptop) takes ~285 ms before the event loop runs, and the GPU stack accounts for ~220 MB of RSS. The picture path itself is the same in both renderers (our CPU viewport, ADR 0004), and the software renderer meets every budget here: first picture ~128 ms, ~83 MB. **Proposal:** make the software renderer the Windows default for now (Skia stays selectable with `--renderer hardware` / settings), and revisit when Phase 4 brings animations and translucency, which is when the GPU earns its cost. This changes ADR 0004, so it needs the owner's OK. To check on a typical PC: Skia's cost may be lower on a single-GPU machine.
+2. **Binary size 34.1 MB > 30 MB.** Skia's prebuilt library plus wgpu are the biggest part; the decoder stack (rav1d + yuv for AVIF, moxcms, jxl-oxide, resvg's font stack) added ~13 MB since Phase 1. Experiments: fat LTO → 32.9 MB (+3 min per release build); fat LTO + `opt-level = "s"` for non-hot crates (wgpu, naga, font parsing, usvg, windows) → 32.1 MB. Neither gets under 30 MB. **Options:** raise the budget to 35 MB, or drop Skia on Windows (proposal 1 would make that possible: the software renderer alone saves ~10 MB). Owner decision.
+
+**Robustness found by running the app (all fixed):** decoding the same broken neighbour twice (result in flight while rescheduling); arrow keys panning by a fraction of a pixel at "fit" instead of changing the picture (rounding); a missing file silently replaced by its neighbour.

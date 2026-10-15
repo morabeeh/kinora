@@ -24,6 +24,12 @@
 *.qoi  binary
 *.dds  binary
 *.exr  binary
+*.ppm  binary
+*.pgm  binary
+*.pbm  binary
+*.pam  binary
+*.pnm  binary
+*.apng binary
 *.hdr  binary
 *.mp4  binary
 *.mkv  binary
