@@ -12,7 +12,7 @@ Measurements against the budgets in PROJECT_BRIEF.md §10. Each phase adds a sec
 ## Phase 0 — empty window (2026-10-14, Windows dev machine)
 | Metric | Value | Budget | Notes |
 |---|---|---|---|
-| Release binary size | **11.8 MB** | ≤ 25 MB | both renderers compiled in |
+| Release binary size | **11.8 MB** | ≤ 25 MB (raised to **≤ 30 MB** on 2026-10-15, ADR 0004) | both renderers compiled in |
 | RSS, empty window, FemtoVG/OpenGL, release, after resizing | **345 MB** (288 MB private) | ≤ 200 MB *with a 12 MP image* | ⚠️ way over for an empty window |
 | RSS, empty window, FemtoVG/OpenGL, debug, at start | 124 MB | — | |
 | RSS, empty window, software renderer, debug, at start | 41 MB | — | |

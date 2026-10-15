@@ -3,7 +3,7 @@
 Full spec: `PROJECT_BRIEF.md` (read it when starting a session). This file is the short version.
 
 ## Current phase
-**Phase 1 (technical spike) done on Windows (2026-10-15)**: ADR 0002/0004/0005 are *proposed*, waiting for the owner's approval; Linux runs pending (`docs/setup-linux.md` §5). Spike code: branch `spike/phase1` (throwaway, never merged). Never start the next phase without the owner's explicit "go".
+**Phase 1 (technical spike) done on Windows (2026-10-15)**: ADR 0002/0004 **accepted for Windows**, ADR 0005 **accepted** (2026-10-15); binary budget raised to 30 MB; Linux defaults pending (`docs/setup-linux.md` §5). Spike code: branch `spike/phase1` (throwaway, never merged). Never start the next phase without the owner's explicit "go".
 Key Phase 1 results: Windows UI = Skia GPU → software fallback (FemtoVG stutters on Intel); Windows video = mpv child window (backend B), `vo=gpu`+`profile=fast` without a GPU; AVIF = avif-decode/rav1d (needs NASM); see `docs/perf.md`.
 
 ## Owner & decisions (2026-10-14)

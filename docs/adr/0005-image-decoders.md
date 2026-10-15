@@ -1,6 +1,6 @@
 # ADR 0005 — Image decoders (corrections to the brief's stack table)
 
-- **Status:** **Proposed — awaiting owner approval** (2026-10-15)
+- **Status:** **Accepted** (owner, 2026-10-15)
 - **Deciders:** project owner, Claude Code
 - **Evidence:** `docs/perf.md` (Phase 1 S5), spike `spike/s5-images`.
 

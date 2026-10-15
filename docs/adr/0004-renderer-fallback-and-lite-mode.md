@@ -1,6 +1,6 @@
 # ADR 0004 — UI renderer choice, fallback chain and Lite mode
 
-- **Status:** **Proposed — awaiting owner approval** (2026-10-15). Windows is measured; Linux is pending the Mint PC.
+- **Status:** **Accepted for Windows** (owner, 2026-10-15): Skia (GPU) → Slint software, FemtoVG dropped on Windows; **release-binary budget raised from 25 MB to 30 MB**. The Linux default renderer is still *proposed* until the Mint PC run.
 - **Deciders:** project owner, Claude Code
 - **Evidence:** `docs/perf.md` (Phase 0, Phase 1 S1, S5–S7), spike code on branch `spike/phase1`.
 
@@ -30,7 +30,7 @@ Plus: the software renderer with our CPU viewport (crop + `fast_image_resize` to
 4. **The image canvas always uses our CPU viewport output**, shown 1:1 (`phx` units, `pixelated`), in *all* renderers. This keeps fit/100% identical across renderers (§5.4) and avoids uploading full-resolution textures (the source of most GPU memory use).
 
 ## Consequences
-- ⚠️ **Binary size:** Skia adds about 10 MB (21.3 MB with both renderers, against a 25 MB target). That leaves about 4 MB for decoders, HEIF glue, etc. Either we accept a slightly higher budget (≈ 28–30 MB) or we re-measure whether Skia is needed once Linux results are in. **The owner should decide on the budget.**
+- ⚠️ **Binary size:** Skia adds about 10 MB (21.3 MB with both renderers, against a 25 MB target). That leaves about 4 MB for decoders, HEIF glue, etc. **Owner decision (2026-10-15): the budget is raised to 30 MB** (PROJECT_BRIEF.md §10 row "Release binary").
 - Skia's default surface on Windows went through wgpu: Vulkan was rejected and it fell back to another surface. Phase 2 must **log which surface was selected** and test a machine without Vulkan.
 - The software renderer's limits (no shadows, no rounded clipping, no element rotation, western text only) stay real for the *chrome*. UI_SPEC.md must design for them (§6).
 - Lite also needs: an image **pyramid** (½, ¼ levels) for zoomed-out views of huge images (fit on 24 MP costs ≈ 20 ms here, so ≈ 60 ms on a Celeron), scaled JPEG decoding for first pixel, and the mpv Lite settings from ADR 0002.

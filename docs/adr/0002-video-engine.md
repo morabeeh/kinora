@@ -1,6 +1,6 @@
 # ADR 0002 — Video engine: embedded libmpv with three output backends
 
-- **Status:** **Proposed (revised with Phase 1 measurements) — awaiting owner approval** (2026-10-15). Windows is measured; Linux is pending.
+- **Status:** **Accepted for Windows** (owner, 2026-10-15): backend B is the Windows default. Linux/macOS backend order is still *proposed* until the Mint PC measurements exist.
 - **Deciders:** project owner, Claude Code
 - **Evidence:** `docs/perf.md` (Phase 1 S2–S4), spike code on branch `spike/phase1`.
 
