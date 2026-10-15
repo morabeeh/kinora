@@ -238,9 +238,14 @@ fn native_bytes(path: &std::path::Path) -> Vec<u8> {
     path.as_os_str().as_bytes().to_vec()
 }
 
+/// Rebuilds a path sent by another Kinora. `None` for bytes no real path can have (a NUL
+/// character), so a garbled request is rejected instead of opening a strange path.
 #[cfg(unix)]
 fn path_from_native(bytes: &[u8]) -> Option<PathBuf> {
     use std::os::unix::ffi::OsStrExt as _;
+    if bytes.contains(&0) {
+        return None;
+    }
     Some(PathBuf::from(std::ffi::OsStr::from_bytes(bytes)))
 }
 
@@ -261,6 +266,9 @@ fn path_from_native(bytes: &[u8]) -> Option<PathBuf> {
         return None;
     }
     let wide: Vec<u16> = pairs.iter().map(|pair| u16::from_le_bytes(*pair)).collect();
+    if wide.contains(&0) {
+        return None;
+    }
     Some(PathBuf::from(std::ffi::OsString::from_wide(&wide)))
 }
 
@@ -336,6 +344,16 @@ mod tests {
         truncated.extend_from_slice(&10u32.to_le_bytes());
         truncated.extend_from_slice(b"abc");
         assert!(decode(&mut truncated.as_slice()).is_err());
+    }
+
+    #[test]
+    fn paths_with_nul_characters_are_rejected() {
+        let mut request = MAGIC.to_vec();
+        let garbled = native_bytes(std::path::Path::new("a\0b.jpg"));
+        request.extend_from_slice(&u32::try_from(garbled.len()).unwrap().to_le_bytes());
+        request.extend_from_slice(&garbled);
+        request.extend_from_slice(&0u32.to_le_bytes());
+        assert!(decode(&mut request.as_slice()).is_err());
     }
 
     #[test]
