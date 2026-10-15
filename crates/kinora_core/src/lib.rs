@@ -1,7 +1,12 @@
-//! Pure logic for Kinora — no UI, no I/O side effects (only traits for them).
+//! Pure logic for Kinora — no UI, no I/O side effects.
 //!
-//! Will contain: `MediaItem`, `FolderModel`, natural sorting, the navigation state
-//! machine, the settings model, `HardwareProfile` tier rules, zoom/pan/crop math and
-//! the edit-stack model. Everything here is heavily unit-tested.
+//! Folder model and natural sorting, the navigation state machine, preload planning,
+//! zoom/pan math, hardware-tier rules and the settings model. Everything here is heavily
+//! unit-tested (including property tests), because the rest of the app builds on it.
 //!
 //! Dependency rule: this crate depends on **no other Kinora crate**.
+
+pub mod folder;
+pub mod media;
+pub mod natural_sort;
+pub mod navigation;
