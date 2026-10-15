@@ -1,0 +1,27 @@
+[package]
+name = "s1-renderers"
+description = "THROWAWAY spike S1: compare Slint renderers (resize smoothness, frame rate, memory)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Each renderer is a feature so we can also measure binary-size cost per renderer.
+[features]
+default = ["femtovg", "software", "skia", "femtovg-wgpu"]
+femtovg = ["slint/renderer-femtovg"]
+software = ["slint/renderer-software"]
+skia = ["slint/renderer-skia"]
+femtovg-wgpu = ["slint/renderer-femtovg-wgpu"]
+
+[dependencies]
+anyhow = { workspace = true }
+slint = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[lints]
+workspace = true

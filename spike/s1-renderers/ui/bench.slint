@@ -1,0 +1,28 @@
+// THROWAWAY spike S1: a big photo fitted into the window, plus a translucent bar like our future toolbar.
+export component BenchWindow inherits Window {
+    in property <image> photo;
+    in property <string> label;
+    title: "Kinora spike S1 — " + label;
+    preferred-width: 1200px;
+    preferred-height: 750px;
+    background: #1c1c1c;
+
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: photo;
+        image-fit: contain;
+        image-rendering: smooth;
+    }
+
+    Rectangle {
+        y: 0;
+        height: 48px;
+        background: #202020c0;
+        Text {
+            text: label;
+            color: white;
+            font-size: 16px;
+        }
+    }
+}
