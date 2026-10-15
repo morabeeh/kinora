@@ -42,5 +42,29 @@ $env:SLINT_BACKEND="winit-software"; cargo run -p kinora_app; Remove-Item Env:SL
 cargo xtask check-all                                     # everything CI checks
 ```
 
-## 6. Media libraries (added in Phase 1)
-libmpv (`libmpv-2.dll` + import library, from a reputable open-source build) and libheif (vcpkg or prebuilt) get documented here once the Phase 1 spike needs them.
+## 6. Media libraries and tools (Phase 1)
+Everything lives outside the repo, e.g. `%USERPROFILE%\dev\kinora-tools\`.
+
+**libmpv**: from the shinchiro/mpv-winbuild-cmake GitHub releases, download **`mpv-dev-x86_64-<date>-git-<hash>.7z`**. ⚠️ **Not** the `x86_64-v3` build, which requires AVX2 and breaks old PCs. Check its SHA-256 against the release page, extract it to `kinora-tools\mpv`, then create the MSVC import library (Developer PowerShell, or use the full path to `dumpbin`/`lib` under `VC\Tools\MSVC\<ver>\bin\Hostx64\x64`):
+```powershell
+cd $env:USERPROFILE\dev\kinora-tools\mpv
+$exports = dumpbin /exports libmpv-2.dll | Select-String '^\s+\d+\s+[0-9A-F]+\s+[0-9A-F]{8}\s+(mpv_\w+)' | % { $_.Matches[0].Groups[1].Value }
+Set-Content mpv.def -Encoding ascii -Value (@('LIBRARY libmpv-2.dll','EXPORTS') + $exports)
+lib /nologo /def:mpv.def /out:mpv.lib /machine:x64
+```
+Build scripts look in `KINORA_MPV_DIR` (default `%USERPROFILE%\dev\kinora-tools\mpv`). At run time, put that folder on `PATH`.
+
+**libheif** (HEIC) via vcpkg, as DLLs (dynamic linking only):
+```powershell
+git clone https://github.com/microsoft/vcpkg.git $env:USERPROFILE\dev\kinora-tools\vcpkg
+cd $env:USERPROFILE\dev\kinora-tools\vcpkg
+.\bootstrap-vcpkg.bat -disableMetrics
+.\vcpkg.exe install "libheif[core,hevc]:x64-windows" --disable-metrics   # ~3 min; `hevc` = x265 encoder, only to generate test files
+$env:VCPKG_ROOT = "$env:USERPROFILE\dev\kinora-tools\vcpkg"; $env:VCPKGRS_DYNAMIC = "1"
+# run time: add vcpkg\installed\x64-windows\bin to PATH
+```
+(`libheif[aom]` failed to build here because a Perl download timed out. We don't need it: AVIF uses rav1d, see ADR 0005.)
+
+**NASM** (rav1d's AVIF decoder assembles SIMD code at build time): `winget install --id NASM.NASM -e`, then add `%LOCALAPPDATA%\bin\NASM` to `PATH`.
+
+**FFmpeg** (only to generate test files): the BtbN/FFmpeg-Builds `ffmpeg-n9.0-latest-win64-gpl-9.0.zip` (≈ 194 MB, verify its SHA-256), extracted to `kinora-tools`. Spike tools read it from `KINORA_FFMPEG`.

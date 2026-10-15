@@ -8,6 +8,10 @@ These notes explain each Rust concept the first time Kinora uses it. Each note c
 | 02 | [`Result`, `?` and `anyhow`](02-result-and-anyhow.md) | exceptions, `try/catch`, rethrow |
 | 03 | [Slint basics](03-slint-basics.md) | XAML, bindings, source generators |
 | 04 | [Lints and clippy](04-lints-and-clippy.md) | Roslyn analyzers, `.editorconfig`, `TreatWarningsAsErrors` |
+| 05 | [FFI and `unsafe`](05-ffi-and-unsafe.md) | P/Invoke, `SafeHandle`, `unsafe` blocks |
+| 06 | [Traits and `dyn`](06-traits-and-dyn.md) | interfaces, DI, generics constraints |
+| 07 | [Threads, channels, `Send`/`Sync`](07-threads-channels-send-sync.md) | `Thread`, `BlockingCollection`, `Dispatcher.Invoke` |
+| 08 | [Build scripts and linking](08-build-scripts-and-linking.md) | `NativeLibrary`, import `.lib` files, NuGet native assets |
 
 ## Where to start reading the code
 1. [`crates/kinora_app/src/main.rs`](../../crates/kinora_app/src/main.rs) is the entry point, like `Program.cs`.
