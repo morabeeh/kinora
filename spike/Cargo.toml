@@ -2,7 +2,7 @@
 # Results go to docs/perf.md and docs/adr/. See PROJECT_BRIEF.md §12 (Phase 1).
 [workspace]
 resolver = "3"
-members = ["s1-renderers"]
+members = ["s1-renderers", "s2-video-gl", "s3-video-wid"]
 
 [workspace.package]
 version = "0.0.0"
@@ -19,6 +19,10 @@ slint = { version = "1.18.1", default-features = false, features = [
     "accessibility",
 ] }
 slint-build = "1.18.1"
+libmpv2 = "6.0.0"
+glow = "0.18.0"
+raw-window-handle = "0.6.2"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_LibraryLoader"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 

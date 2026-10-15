@@ -52,3 +52,54 @@ Setup: throwaway app `spike/s1-renderers` (branch `spike/phase1`), showing a gen
 4. Skia costs **+10 MB** of binary size. 21.3 MB leaves about 4 MB of the 25 MB budget for decoders.
 
 **Still pending:** NVIDIA-forced OpenGL run (optional, since the problem reproduces on Intel, which is the common case); Mesa llvmpipe "no GPU" run; all Linux runs (Mint PC: X11, Wayland, `LIBGL_ALWAYS_SOFTWARE=1`).
+
+## Phase 1 / S2–S3 — video backends on Windows (2026-10-15, release builds)
+Test files are generated with FFmpeg 9.0 (testsrc2 pattern + 440 Hz tone, kept outside the repo): 1080p30 and 1080p60 H.264; 1080p30 HEVC (8- and 10-bit); 2160p30 HEVC.
+libmpv: shinchiro build `20261015` (baseline x86-64, mpv git `492bae0768`); `mpv.lib` generated from the DLL exports with MSVC `lib.exe`.
+Runners: `spike/s2-run.ps1`, `spike/s3-run.ps1`. "2 cores" = CPU affinity on cores 0–1. CPU % is relative to the cores the process may use.
+
+### S2 — backend A (mpv render API → OpenGL texture → Slint image, controls drawn on top)
+| Case | Renderer | Hwdec used | Video fps | Frame p95 | mpv render call p50/p95 | Drops | Peak RSS | CPU |
+|---|---|---|---|---|---|---|---|---|
+| 1080p30 H.264 | femtovg | d3d11va-copy | 30.2 | 49.8 ms | 0.37 / 0.44 ms | 0 | 277 MB | <1% |
+| 1080p30 H.264 | skia-opengl | d3d11va-copy | 30.2 | 50.4 ms | 0.52 / 0.77 ms | 0 | 359 MB | <1% |
+| 1080p60 H.264 | femtovg / skia-opengl | d3d11va-copy | 59.9 / 60.0 | 17.8 ms | 0.37 / 0.47 ms | 0 | 289 / 366 MB | — |
+| 2160p30 HEVC | femtovg / skia-opengl | d3d11va-copy | 30.1 / 30.2 | 50 ms | 0.95 / 1.28 ms | ≤1 | 440 / 679 MB | — |
+| 2160p30 HEVC, CPU decode | femtovg / skia-opengl | no | 30.1 / 30.2 | 50 ms | 1.1 / 1.2 ms | ≤1 | 725 / 974 MB | — |
+| 1080p30 H.264, CPU decode, 2 cores | femtovg / skia-opengl | no | 30.1 / 30.2 | 50 ms | 0.4 / 0.5 ms | ≤1 | 240 / 321 MB | 8.7 / 9.8% |
+| 1080p30 HEVC, CPU decode, 2 cores | femtovg / skia-opengl | no | 30.2 / 30.2 | 50 ms | 0.4 / 0.5 ms | 0 | 247 / 328 MB | 9.4 / 9.9% |
+| 1080p30 auto-resize, **no debounce** | femtovg / skia-opengl | d3d11va-copy | **21.3 / 23.4** | 225 / 62 ms | **17.4 / 3.9 ms** | **62 / 48** | 722 / 1074 MB | — |
+| 1080p30 auto-resize, **150 ms debounce** | femtovg / skia-opengl | d3d11va-copy | **30.2 / 30.2** | 46 / 48 ms | 0.44 / 0.55 ms | **0** | 618 / 754 MB | — |
+
+First frame after `loadfile`: 150–170 ms (warm) and up to ~1 s on the very first run (cold DLL/driver load). Budget: ≤ 300 ms warm, ≤ 700 ms first video.
+
+Owner's eye test: playback **smooth** in both; controls and the translucent overlay bar work; **drag-resize stutters in both** (the same OpenGL-on-Intel/Windows weakness as S1).
+
+Findings:
+1. mpv rebuilds its scaler for every new target size (~15 ms per resize step). **Debouncing** (keep rendering at the old size and let Slint scale until the size has been stable for 150 ms) fixes the timer-driven resize test completely. Interactive drag still stutters because of the GL driver (S1).
+2. On Windows, backend A can only use hardware decoding in **copy-back** mode (`d3d11va-copy`: GPU → RAM → OpenGL), which costs memory bandwidth.
+3. The frame interval p95 of about 50 ms for 30 fps content means some frames are shown for 3 display refreshes instead of 2 (`video-timing-offset=0` + Slint's redraw scheduling). It isn't visible to the owner on test patterns; Phase 3 should use mpv's frame timing (`report_swap` / target time) for even pacing.
+4. Memory with GPU renderers is high (277–974 MB), and it grows during resize (texture churn).
+
+### S3 — backend B (mpv's own `vo=gpu-next`/D3D11 in a native child window, controls below)
+| Case | UI renderer | Hwdec used | Video fps | VO drops | Peak RSS | CPU | First frame |
+|---|---|---|---|---|---|---|---|
+| 1080p30 H.264 | skia / software | **d3d11va (zero-copy)** | 30.0 | 0 | 378 / **224 MB** | 0.7 / 0.4% | 430 / 345 ms |
+| 1080p30 H.264, auto-resize | skia / software | d3d11va | 30.0 | **0** | 474 / 336 MB | 1.8 / 2.0% | 347 / 367 ms |
+| 2160p30 HEVC | skia / software | d3d11va | 30.0 | 0 | 561 / 422 MB | 0.6 / 0.4% | 298 / 324 ms |
+| **No-GPU sim** (`d3d11-warp`), CPU decode, 2 cores, 1080p30 H.264, default `gpu-next` | software | no | 30.0 | **200 of 300** | 195 MB | **90%** | 683 ms |
+| same, `gpu-next` + `profile=fast` | software | no | 30.0 | 187 | 175 MB | 94% | 193 ms |
+| same, **`vo=gpu` + `profile=fast`** | software | no | 30.0 | **0** | 158 MB | **33%** | 169 ms |
+| same, `vo=gpu` + `profile=fast`, 1080p30 HEVC | software | no | 30.0 | 0 | 163 MB | 36% | 140 ms |
+| same, `vo=gpu` + `profile=fast`, 1080p60 H.264 | software | no | 60.0 | 0 | 160 MB | 65% | 172 ms |
+| same, `vo=gpu` + `profile=fast`, 2160p30 HEVC | software | no | 30.0 | 0 | 299 MB | 46% | 195 ms |
+
+(`vo=direct3d` measured 9% CPU, but `d3d11-warp` does not apply to Direct3D 9, so that run still used the real GPU. It is not a valid no-GPU result.)
+
+Owner's eye test: playback **smooth**, **drag-resize smooth** with both UI renderers, controls work, nothing covers the controls.
+
+Findings:
+1. Backend B is the best Windows path measured: zero-copy hardware decoding, no drops even while resizing, lowest CPU, and the UI renderer can be the smooth one from S1.
+2. Its cost is the **airspace rule**: nothing can be drawn over the video, so controls go below it. Overlay chrome (fullscreen auto-hide bar) would need a separate transparent top-level window over the video. Not tested yet.
+3. Lite mode on Windows must switch mpv to **`vo=gpu` + `profile=fast`**. The default `gpu-next` is far too heavy when Direct3D falls back to the CPU.
+4. Still pending: a real old CPU (this CPU's cores are roughly 3× faster than a Lite-tier Celeron), and Linux (X11 `wid`; Wayland has none, so backend C).

@@ -1,0 +1,41 @@
+// THROWAWAY spike S3: the video area is a black placeholder that a native child window
+// (owned by mpv) covers exactly; our controls sit BELOW it because nothing can be drawn
+// on top of a child window (the "airspace" limitation, like WPF's HwndHost).
+import { Button } from "std-widgets.slint";
+
+export component VideoWindow inherits Window {
+    in property <string> position-text;
+    in property <string> label;
+    in property <bool> paused;
+    // Video area in physical pixels, read by Rust to position the child window.
+    out property <int> video-width-px: Math.round(root.width / 1phx);
+    out property <int> video-height-px: Math.round((root.height - bar.height) / 1phx);
+    callback toggle-pause();
+    callback seek(int);
+    callback geometry-changed();
+
+    changed width => { root.geometry-changed(); }
+    changed height => { root.geometry-changed(); }
+
+    title: "Kinora spike S3 — " + label;
+    preferred-width: 1280px;
+    preferred-height: 776px;
+    background: black;
+
+    VerticalLayout {
+        Rectangle { background: black; }
+        bar := Rectangle {
+            height: 56px;
+            background: #202020;
+            HorizontalLayout {
+                padding: 8px;
+                spacing: 8px;
+                Button { text: "−10 s"; clicked => { root.seek(-10); } }
+                Button { text: root.paused ? "Play" : "Pause"; clicked => { root.toggle-pause(); } }
+                Button { text: "+10 s"; clicked => { root.seek(10); } }
+                Text { text: root.position-text; color: white; vertical-alignment: center; }
+                Text { text: root.label; color: #aaaaaa; vertical-alignment: center; horizontal-alignment: right; }
+            }
+        }
+    }
+}

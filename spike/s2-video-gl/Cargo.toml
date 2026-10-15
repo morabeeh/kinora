@@ -1,0 +1,21 @@
+[package]
+name = "s2-video-gl"
+description = "THROWAWAY spike S2: mpv render API -> OpenGL texture -> Slint image (video backend A)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+glow = { workspace = true }
+libmpv2 = { workspace = true }
+slint = { workspace = true, features = ["renderer-femtovg", "renderer-skia"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,22 @@
+[package]
+name = "s3-video-wid"
+description = "THROWAWAY spike S3: mpv in a native child window (wid) under a Skia/software UI (video backend B)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+libmpv2 = { workspace = true }
+raw-window-handle = { workspace = true }
+slint = { workspace = true, features = ["renderer-skia", "renderer-software", "raw-window-handle-06"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+windows-sys = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[lints]
+workspace = true

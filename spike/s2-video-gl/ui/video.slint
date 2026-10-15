@@ -1,0 +1,39 @@
+// THROWAWAY spike S2: video frame (an OpenGL texture filled by mpv) with a translucent
+// control bar drawn ON TOP of it — the overlay layout that backend A makes possible.
+import { Button } from "std-widgets.slint";
+
+export component VideoWindow inherits Window {
+    in property <image> video-frame;
+    in property <string> position-text;
+    in property <string> label;
+    in property <bool> paused;
+    callback toggle-pause();
+    callback seek(int);
+
+    title: "Kinora spike S2 — " + label;
+    preferred-width: 1280px;
+    preferred-height: 720px;
+    background: black;
+
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: video-frame;
+        image-fit: contain; // while a resize settles the texture has the old size
+    }
+
+    Rectangle {
+        y: parent.height - self.height;
+        height: 56px;
+        background: #000000a0;
+        HorizontalLayout {
+            padding: 8px;
+            spacing: 8px;
+            Button { text: "−10 s"; clicked => { root.seek(-10); } }
+            Button { text: root.paused ? "Play" : "Pause"; clicked => { root.toggle-pause(); } }
+            Button { text: "+10 s"; clicked => { root.seek(10); } }
+            Text { text: root.position-text; color: white; vertical-alignment: center; }
+            Text { text: root.label; color: #aaaaaa; vertical-alignment: center; horizontal-alignment: right; }
+        }
+    }
+}
