@@ -43,12 +43,12 @@ pub fn process_memory() -> Option<ProcessMemory> {
     }
 }
 
-#[cfg(test)]
+// Only Windows and Linux report memory so far (macOS arrives in v1.1).
+#[cfg(all(test, any(windows, target_os = "linux")))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(any(windows, target_os = "linux"))]
     fn ram_and_process_memory_are_reported() {
         let ram = total_ram_bytes().unwrap();
         assert!(ram > 256 * 1024 * 1024, "{ram}");
