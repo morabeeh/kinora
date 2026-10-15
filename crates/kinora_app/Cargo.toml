@@ -18,6 +18,15 @@ slint = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+# GPU renderer per OS (ADR 0004); the software renderer comes from the workspace entry.
+# Windows: Skia (FemtoVG stuttered on Intel's OpenGL driver). Linux: FemtoVG, provisional
+# until the Mint PC measurements. macOS: unchanged until v1.1.
+[target.'cfg(windows)'.dependencies]
+slint = { workspace = true, features = ["renderer-skia"] }
+
+[target.'cfg(not(windows))'.dependencies]
+slint = { workspace = true, features = ["renderer-femtovg"] }
+
 [build-dependencies]
 slint-build = { workspace = true }
 
