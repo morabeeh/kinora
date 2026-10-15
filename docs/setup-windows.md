@@ -68,3 +68,14 @@ $env:VCPKG_ROOT = "$env:USERPROFILE\dev\kinora-tools\vcpkg"; $env:VCPKGRS_DYNAMI
 **NASM** (rav1d's AVIF decoder assembles SIMD code at build time): `winget install --id NASM.NASM -e`, then add `%LOCALAPPDATA%\bin\NASM` to `PATH`.
 
 **FFmpeg** (only to generate test files): the BtbN/FFmpeg-Builds `ffmpeg-n9.0-latest-win64-gpl-9.0.zip` (≈ 194 MB, verify its SHA-256), extracted to `kinora-tools`. Spike tools read it from `KINORA_FFMPEG`.
+
+## 7. Everyday commands (Phase 2 on)
+`cargo xtask check-all` and `cargo xtask run` find vcpkg (`%USERPROFILE%\dev\kinora-tools\vcpkg`) and NASM (`%LOCALAPPDATA%\bin\NASM`) by themselves and put them on `PATH` for the build and for running Kinora:
+```powershell
+cargo xtask run -- "C:\path\to\photo.jpg"                                  # debug build
+cargo xtask run --release -- --bench-startup "C:\path\to\photo.jpg"       # startup timings
+cargo xtask gen-folder "$env:USERPROFILE\dev\kinora-tools\flick500"        # 500 test photos
+```
+Plain `cargo build` / `cargo run` need the same environment. Setting it once for your user is optional (it changes your user environment variables, so it's your call): set `VCPKG_ROOT` to `%USERPROFILE%\dev\kinora-tools\vcpkg`, and add `%LOCALAPPDATA%\bin\NASM` and `%USERPROFILE%\dev\kinora-tools\vcpkg\installed\x64-windows\bin` to `PATH` (Settings → System → About → Advanced system settings → Environment Variables).
+
+`heif.dll` is **delay-loaded**: Kinora starts without it, and HEIC files then show "not available" instead of the app failing to start.

@@ -13,7 +13,10 @@ sudo apt install build-essential pkg-config git curl cmake
 sudo apt install libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
                  libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev
 # media libraries (needed from Phase 1: video and HEIC)
-sudo apt install libmpv-dev libheif-dev nasm   # nasm: build-time assembler for the AVIF decoder (rav1d)
+sudo apt install libmpv-dev libheif-dev libheif-plugin-libde265 nasm
+#   libheif-plugin-libde265: libheif's HEVC decoder (HEIC photos). apt normally installs it
+#   as a "recommended" package; it's listed so a --no-install-recommends setup still works.
+#   nasm: build-time assembler for the AVIF decoder (rav1d)
 # optional: a much faster linker for dev builds
 sudo apt install mold
 ```
