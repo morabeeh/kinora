@@ -7,6 +7,10 @@
 //! Dependency rule: this crate depends on **no other Kinora crate**.
 
 pub mod folder;
+pub mod hardware;
 pub mod media;
 pub mod natural_sort;
 pub mod navigation;
+pub mod preload;
+pub mod settings;
+pub mod viewport;
