@@ -107,6 +107,9 @@ struct State {
     full_refused: HashSet<PathBuf>,
     /// Full resolution was requested for these (zoomed in past the screen-sized decode).
     full_wanted: HashSet<PathBuf>,
+    /// Jobs submitted whose result hasn't reached the UI thread yet. (The pool only knows
+    /// queued and running jobs; a finished job's result can still be on its way.)
+    requested: HashSet<ImageKey>,
     shown: Option<Shown>,
     view: View,
     press_view: Option<View>,
@@ -160,6 +163,7 @@ impl Viewer {
             failures: HashMap::new(),
             full_refused: HashSet::new(),
             full_wanted: HashSet::new(),
+            requested: HashSet::new(),
             shown: None,
             view: View::default(),
             press_view: None,
@@ -511,16 +515,29 @@ impl Viewer {
                 state.cache.set_pinned(pinned);
             }
         }
+        let mut dropped: Vec<ImageKey> = Vec::new();
         self.pool.reprioritize(|key| {
-            wanted
+            let priority = wanted
                 .iter()
                 .find(|(wanted_key, _)| wanted_key == key)
-                .map(|(_, priority)| *priority)
-        });
-        for (key, priority) in wanted {
-            if !self.pool.is_pending(&key) {
-                self.submit_decode(key, priority);
+                .map(|(_, priority)| *priority);
+            if priority.is_none() {
+                dropped.push(key.clone());
             }
+            priority
+        });
+        let to_submit: Vec<(ImageKey, u8)> = {
+            let mut state = self.state.borrow_mut();
+            for key in &dropped {
+                state.requested.remove(key);
+            }
+            wanted
+                .into_iter()
+                .filter(|(key, _)| state.requested.insert(key.clone()))
+                .collect()
+        };
+        for (key, priority) in to_submit {
+            self.submit_decode(key, priority);
         }
     }
 
@@ -556,6 +573,7 @@ impl Viewer {
             result,
             elapsed,
         } = outcome;
+        self.state.borrow_mut().requested.remove(&key);
         let is_current = self
             .state
             .borrow()
@@ -1026,7 +1044,12 @@ impl Viewer {
             if let Some(monitor) = monitor {
                 state.screen = Size::new(monitor.width.max(1), monitor.height.max(1));
                 state.monitor = Some(state.screen);
-                tracing::debug!(width = monitor.width, height = monitor.height, "monitor");
+                tracing::info!(
+                    ms = self.config.process_start.elapsed().as_millis(),
+                    monitor_width = monitor.width,
+                    monitor_height = monitor.height,
+                    "native window ready (from process start)"
+                );
             }
             // A window bigger than the screen size we decode for: decode bigger.
             state.screen = Size::new(

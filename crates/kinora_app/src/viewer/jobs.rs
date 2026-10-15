@@ -44,6 +44,16 @@ pub struct Failure {
 
 impl Failure {
     pub fn from_error(error: &DecodeError) -> Self {
+        // The card's title already says what happened; the small print adds only the
+        // technical detail.
+        let detail = match error {
+            DecodeError::Io(io) => io.to_string(),
+            DecodeError::Corrupt { detail, .. } => detail.clone(),
+            DecodeError::TooLarge { width, height } if *width > 0 => {
+                format!("{width} × {height} pixels")
+            }
+            _ => String::new(),
+        };
         let (kind, format) = match error {
             DecodeError::Io(io) => (
                 match io.kind() {
@@ -63,7 +73,7 @@ impl Failure {
         Self {
             kind,
             format,
-            detail: error.to_string(),
+            detail,
         }
     }
 
@@ -149,7 +159,7 @@ mod tests {
         let failure = Failure::from_error(&corrupt);
         assert_eq!(failure.kind, ErrorKind::Damaged);
         assert_eq!(failure.format, "HEIC");
-        assert!(failure.detail.contains("bad box"));
+        assert_eq!(failure.detail, "bad box");
     }
 
     #[test]
