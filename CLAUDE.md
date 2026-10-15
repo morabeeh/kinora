@@ -4,12 +4,13 @@ Full spec: `PROJECT_BRIEF.md` (read it when starting a session). This file is th
 
 ## Current phase
 **Phase 0 done (2026-10-14). Next: Phase 1 — technical spike**, waiting for the owner's "go". Never start the next phase without the owner's explicit "go".
-Open items carried into Phase 1: OpenGL resize stutter + 345 MB RSS on Windows/Intel (`docs/perf.md`); CI cost decision (first run ≈ 186 billed minutes on a private repo).
+Open item carried into Phase 1: OpenGL resize stutter + 345 MB RSS on Windows/Intel (`docs/perf.md`).
+Phase 1 is done on the owner's Windows PC first; the Mint PC check (`docs/setup-linux.md` §4) comes later.
 
 ## Owner & decisions (2026-10-14)
 - Owner is an experienced C#/.NET dev, new to Rust → explain in C# terms; add a `docs/learning/` note (≤ 1 page, C# comparison, pointer into our code) for every Rust concept introduced.
 - Develops on **Windows 11** now; **Linux Mint 22 is the #1 target** (covered by CI `ubuntu-24.04` + `docs/setup-linux.md`). Owner's Mint PC: Intel i5, integrated graphics.
-- Name Kinora · GPL-3.0-or-later · macOS deferred to v1.1 · wheel default = zoom · VS Code · Flatpak later · private GitHub repo `kinora` · Lite tier simulated (no old hardware yet).
+- Name Kinora · GPL-3.0-or-later · macOS deferred to v1.1 · wheel default = zoom · VS Code · Flatpak later · **public** GitHub repo `morabeeh/kinora` (made public 2026-10-15 → free CI minutes) · Lite tier simulated (no old hardware yet).
 
 ## Commands
 ```
