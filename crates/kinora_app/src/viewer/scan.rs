@@ -11,7 +11,8 @@ use kinora_core::folder::{MediaItem, SortKey};
 use kinora_core::media::{MediaKind, kind_from_file_name};
 
 /// Lists `folder`, always including `opened` (the file the user asked for, even if its
-/// extension is unusual).
+/// extension is unusual — or if it doesn't exist any more, so the viewer can say so
+/// instead of silently showing a different picture).
 pub fn scan(
     folder: &Path,
     opened: Option<&Path>,
@@ -53,7 +54,6 @@ pub fn scan(
     }
     if let Some(opened) = opened
         && !items.iter().any(|item| item.path == opened)
-        && opened.is_file()
     {
         let kind = opened
             .file_name()
@@ -149,6 +149,15 @@ mod tests {
         assert_eq!(names(&items), ["a.jpg", "picture.unknownext"]);
         let items = scan(&dir.0, Some(&hidden), SortKey::Name).unwrap();
         assert_eq!(names(&items), [".secret.png", "a.jpg"]);
+    }
+
+    #[test]
+    fn a_missing_opened_file_stays_in_the_list() {
+        let dir = TempDir::new("missing");
+        dir.touch("a.jpg");
+        let missing = dir.0.join("gone.jpg");
+        let items = scan(&dir.0, Some(&missing), SortKey::Name).unwrap();
+        assert_eq!(names(&items), ["a.jpg", "gone.jpg"]);
     }
 
     #[test]

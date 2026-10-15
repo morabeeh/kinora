@@ -253,12 +253,17 @@ impl Viewer {
     }
 
     fn start_scan(&self, folder: PathBuf, opened: Option<PathBuf>) {
-        let sort = self.state.borrow().folder.order().key;
+        let order = self.state.borrow().folder.order();
         let spawned = std::thread::Builder::new()
             .name(String::from("folder-scan"))
             .spawn(move || {
                 let started = Instant::now();
-                let result = scan::scan(&folder, opened.as_deref(), sort);
+                // Sorting here keeps the UI thread free; re-sorting a sorted list there is
+                // nearly free.
+                let result = scan::scan(&folder, opened.as_deref(), order.key).map(|mut items| {
+                    items.sort_by(|a, b| kinora_core::folder::compare_items(a, b, order));
+                    items
+                });
                 let elapsed = started.elapsed();
                 post(move |viewer| viewer.on_scanned(&folder, result, elapsed));
             });
@@ -280,7 +285,7 @@ impl Viewer {
                 return;
             }
         };
-        let had_current = {
+        let (had_current, current_moved) = {
             let mut state = self.state.borrow_mut();
             if state.folder_path.as_deref() != Some(folder) {
                 return; // the user opened something else meanwhile
@@ -291,11 +296,12 @@ impl Viewer {
                 ms = elapsed.as_millis(),
                 "folder listed"
             );
-            let had_current = state.folder.current_index().is_some();
+            let before = state.folder.current().map(|item| item.path.clone());
             state.folder.replace_items(items);
-            had_current
+            let after = state.folder.current().map(|item| item.path.clone());
+            (before.is_some(), before != after)
         };
-        if had_current {
+        if had_current && !current_moved {
             self.update_texts();
             self.schedule();
         } else {
@@ -651,11 +657,15 @@ impl Viewer {
                 state.frame = 0;
                 state.playing = true;
                 let ms = state.navigated_at.elapsed().as_millis();
+                let rss_mb = kinora_platform::memory::process_memory()
+                    .map_or(0, |memory| memory.resident_bytes / (1024 * 1024));
                 tracing::info!(
                     file = %path.display(),
                     ?quality,
                     cached,
                     ms,
+                    rss_mb,
+                    cache_mb = state.cache.used_bytes() / (1024 * 1024),
                     "shown"
                 );
             }
