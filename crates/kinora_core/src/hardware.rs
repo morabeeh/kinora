@@ -55,6 +55,42 @@ impl HardwareInfo {
     pub fn ram_or_default(&self) -> u64 {
         self.total_ram_bytes.unwrap_or(UNKNOWN_RAM)
     }
+
+    /// The same PC as seen by a simulated Lite-tier machine: at most 2 cores, at most 2 GiB
+    /// of RAM and no usable GPU (`KINORA_SIMULATE=lite`, brief Phase 1/2 Lite simulation).
+    #[must_use]
+    pub fn simulate_lite(&self) -> Self {
+        Self {
+            logical_cores: self.logical_cores.clamp(1, 2),
+            total_ram_bytes: Some(self.ram_or_default().min(2 * GIB)),
+            avx2: false,
+            gpu: Gpu::SoftwareOnly(Some(String::from("simulated: no GPU"))),
+        }
+    }
+}
+
+/// `true` if an OpenGL/Direct3D renderer name belongs to a software rasteriser
+/// ("no GPU" in brief §7.6): Mesa llvmpipe/softpipe/swrast, Microsoft Basic Render Driver
+/// (WARP) and the Windows `GDI Generic` OpenGL 1.1 fallback.
+///
+/// ```
+/// use kinora_core::hardware::is_software_renderer_name;
+/// assert!(is_software_renderer_name("llvmpipe (LLVM 17.0.6, 256 bits)"));
+/// assert!(!is_software_renderer_name("Mesa Intel(R) UHD Graphics 620 (KBL GT2)"));
+/// ```
+#[must_use]
+pub fn is_software_renderer_name(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    [
+        "llvmpipe",
+        "softpipe",
+        "swrast",
+        "software rasterizer",
+        "microsoft basic render driver",
+        "gdi generic",
+    ]
+    .iter()
+    .any(|marker| name.contains(marker))
 }
 
 /// Classifies a PC into a tier.
@@ -215,6 +251,38 @@ mod tests {
             budgets(&info, false, Some(100_000)).image_cache_bytes,
             2 * GIB
         );
+    }
+
+    #[test]
+    fn simulated_lite_is_classified_lite() {
+        let fast = pc(24, 128, Gpu::Hardware(Some(String::from("RTX"))));
+        let lite = fast.simulate_lite();
+        assert_eq!(lite.logical_cores, 2);
+        assert_eq!(lite.total_ram_bytes, Some(2 * GIB));
+        assert_eq!(classify(&lite), Tier::Lite);
+        assert_eq!(
+            pc(1, 1, Gpu::Unknown).simulate_lite().total_ram_bytes,
+            Some(GIB)
+        );
+    }
+
+    #[test]
+    fn software_renderer_names() {
+        for name in [
+            "llvmpipe (LLVM 15.0.7, 256 bits)",
+            "softpipe",
+            "Microsoft Basic Render Driver",
+            "GDI Generic",
+        ] {
+            assert!(is_software_renderer_name(name), "{name}");
+        }
+        for name in [
+            "Intel(R) Graphics",
+            "NVIDIA GeForce RTX 5090 Laptop GPU",
+            "AMD Radeon",
+        ] {
+            assert!(!is_software_renderer_name(name), "{name}");
+        }
     }
 
     #[test]
