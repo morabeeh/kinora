@@ -2,7 +2,7 @@
 # Results go to docs/perf.md and docs/adr/. See PROJECT_BRIEF.md §12 (Phase 1).
 [workspace]
 resolver = "3"
-members = ["s1-renderers", "s2-video-gl", "s3-video-wid", "s4-video-sw"]
+members = ["s1-renderers", "s2-video-gl", "s3-video-wid", "s4-video-sw", "s5-images"]
 
 [workspace.package]
 version = "0.0.0"

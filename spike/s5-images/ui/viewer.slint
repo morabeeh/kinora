@@ -1,0 +1,67 @@
+// THROWAWAY spike S5–S7 viewer. Rust produces a frame that is exactly the on-screen size
+// in physical pixels; it is shown 1:1 (`frame-px-*` × 1phx, pixelated) — no Slint scaling.
+export component Viewer inherits Window {
+    in property <image> frame;
+    in property <int> frame-px-width;
+    in property <int> frame-px-height;
+    in property <string> info;
+    callback navigate(int);
+    callback key(string);
+    callback wheel(float, float, float); // notches, cursor x, cursor y (logical px)
+    callback drag-start();
+    callback drag(float, float);         // offset since press (logical px)
+    callback resized();
+
+    changed width => { root.resized(); }
+    changed height => { root.resized(); }
+
+    title: "Kinora spike S5–S7 — " + root.info;
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    background: #1c1c1c;
+    forward-focus: scope;
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.LeftArrow) { root.navigate(-1); return accept; }
+            if (event.text == Key.RightArrow) { root.navigate(1); return accept; }
+            root.key(event.text);
+            accept
+        }
+        area := TouchArea {
+            scroll-event(event) => {
+                root.wheel(event.delta-y / 1px, self.mouse-x / 1px, self.mouse-y / 1px);
+                accept
+            }
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) { root.drag-start(); }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.drag((self.mouse-x - self.pressed-x) / 1px, (self.mouse-y - self.pressed-y) / 1px);
+                }
+            }
+            Image {
+                width: root.frame-px-width * 1phx;
+                height: root.frame-px-height * 1phx;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: root.frame;
+                image-fit: fill;
+                image-rendering: pixelated;
+            }
+        }
+    }
+
+    Rectangle {
+        y: 0;
+        height: 30px;
+        background: #000000b0;
+        Text {
+            x: 8px;
+            text: root.info + "   ←/→ file · wheel zoom · drag pan · 1 = 100% · 0 = fit";
+            color: white;
+            vertical-alignment: center;
+        }
+    }
+}

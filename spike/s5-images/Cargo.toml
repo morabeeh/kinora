@@ -1,0 +1,25 @@
+[package]
+name = "s5-images"
+description = "THROWAWAY spike S5-S7: image formats, EXIF orientation, HiDPI 100% zoom, CPU viewport zoom/pan."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+avif-decode = { version = "3.0.0", default-features = false }
+fast_image_resize = "6.1.0"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp", "tiff", "bmp", "ico", "tga", "pnm", "qoi", "dds", "hdr", "exr", "rayon"] }
+jpeg-decoder = "0.3.2"
+jxl-oxide = "0.12.6"
+libheif-rs = { version = "3.0.0", default-features = false, features = ["v1_17"] }
+slint = { workspace = true, features = ["renderer-software", "renderer-skia", "renderer-femtovg"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[lints]
+workspace = true

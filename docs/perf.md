@@ -120,3 +120,49 @@ Findings:
 1. Backend C is far cheaper than expected, and cheaper than backend B under WARP (14% vs 33% of 2 cores at 1080p30). Rendering at ≤ 854×480 and letting Slint's software renderer scale up is the cheapest path measured. It works on every platform (including Wayland) and allows overlay controls.
 2. Its cost is picture quality (upscaled from 480p) and CPU-side YUV→RGB conversion, which matters more on a real Celeron.
 3. Measuring on a real old CPU is still pending.
+
+## Phase 1 / S5 — image formats, EXIF orientation, robustness (2026-10-15, release, this PC)
+Fixtures come from `spike/s5-images gen` (synthetic: gradient + coloured corner squares; animations from FFmpeg `testsrc2`). Decoders: `image` 0.25.10 (zune-jpeg, png, gif, image-webp, tiff, …), `libheif-rs` 3.0.0 → libheif 1.23.5 (vcpkg, DLL) for HEIC, `avif-decode` 3.0.0 → **rav1d** (memory-safe Rust AV1) for AVIF, `jxl-oxide` 0.12.6 for JPEG XL. All decoding runs single-threaded, the median of 3 runs.
+
+| File | Result | Time |
+|---|---|---|
+| 12 MP JPEG, EXIF orientations 1–8 | **all 8 correct** (red marker in the expected corner; 5–8 rotate to 3000×4000) | 32–44 ms (1–4), 77–85 ms (5–8, transpose cost) |
+| 24 MP JPEG | OK | 65 ms (`image`/zune-jpeg) |
+| 12 MP PNG / 16-bit PNG / BMP / TIFF / PPM / QOI | OK | 28 / 49 / 45 / 34 / 26 / 28 ms |
+| 12 MP HEIC (x265, q80) | OK | 167 ms |
+| 12 MP AVIF (libaom, crf 30) | OK | 77 ms |
+| 12 MP JPEG XL (distance 1) | OK | **271 ms** (slowest; check jxl-oxide threading in Phase 2) |
+| Lossless WebP 12 MP | OK | 54 ms |
+| Animated GIF / WebP / APNG, 30 frames 640×360 | OK, frames counted | 38 / 79 / 50 ms (all frames) |
+| PNG content with a `.jpg` name | **opens** (content sniffing) | 29 ms |
+| TGA | ❌ "format could not be determined": TGA has no magic bytes, so it **needs an extension fallback after sniffing** | — |
+| ICO (PNG-in-ICO, RGB) | ❌ `image`'s ICO decoder only accepts RGBA PNG payloads (quirk; real icons are RGBA) | — |
+| Truncated JPEG / GIF | partial image shown (acceptable) | — |
+| Truncated PNG / HEIC / AVIF / JXL / TIFF / WebP, empty file, random bytes, PNG "bomb" header (100 000²) | **friendly error, no panic** | — |
+
+**Robustness finding:** our first frame counter hung forever (100% of one core) on a truncated GIF. The cause is that `image`'s animation iterators **keep yielding the same error instead of ending**. Rule for Phase 2: always stop at the first error *and* cap frame counts and work. Phase 8 fuzzing must include time limits, not just crash detection.
+
+### Scaled JPEG decoding (fast first pixel, brief §7.6)
+`zune-jpeg` (used by `image`) has **no** DCT-domain scaling; `jpeg-decoder` 0.3.2 does (`Decoder::scale`):
+
+| 24 MP JPEG decoded for a … screen | Decoded size | Time |
+|---|---|---|
+| full (zune-jpeg via `image`) | 6000×4000 | 79 ms |
+| full (jpeg-decoder) | 6000×4000 | 63 ms |
+| 1920×1080 | 3000×2000 (1/2) | 44 ms |
+| 1366×768 / 960×540 | 1500×1000 (1/4) | 26 ms |
+| 480×270 (thumbnail) | 750×500 (1/8) | 19 ms |
+
+### S6 — HiDPI-correct 100%
+At **150% Windows scaling** (144 DPI), a 1-px checkerboard shown at "100%" (1 image px = 1 physical px, buffer drawn 1:1 with `phx` units and `pixelated`) looked **flat grey to the owner, with no moiré**. 100% is pixel-exact with the software renderer. Still to do: 100%/125% scaling and the GPU renderer.
+
+### S7 — software-mode zoom/pan (CPU viewport with `fast_image_resize`, single thread)
+| 24 MP source → window | fit | 50% | 100% | 200% |
+|---|---|---|---|---|
+| 1366×768 | 19.8 ms | 13.6 ms | 1.2 ms | 1.2 ms |
+| 1920×1080 | 20.3 ms | 17.1 ms | 2.5 ms | 2.4 ms |
+| 3840×2160 | 34.3 ms | 35.5 ms | 11.2 ms | 10.3 ms |
+(p50 per viewport render; p95 within +12 ms.)
+
+Owner's eye test with the **software renderer on 2 cores**: zoom (anchored at the cursor) and pan felt **smooth at all zoom levels**.
+Finding: zoomed-out views of huge images are the expensive case (≈ 20–35 ms here, so ≈ 3× that on a Lite CPU). Phase 2 should keep a **pre-scaled pyramid** (½, ¼, … of the decoded image) and resample from the nearest level, plus cache the last fit frame.
