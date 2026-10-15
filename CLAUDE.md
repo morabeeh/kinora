@@ -3,7 +3,8 @@
 Full spec: `PROJECT_BRIEF.md` (read it when starting a session). This file is the short version.
 
 ## Current phase
-**Phase 0 — environment, repo, skeleton.** Never start the next phase without the owner's explicit "go".
+**Phase 0 done (2026-10-14). Next: Phase 1 — technical spike**, waiting for the owner's "go". Never start the next phase without the owner's explicit "go".
+Open items carried into Phase 1: OpenGL resize stutter + 345 MB RSS on Windows/Intel (`docs/perf.md`); CI cost decision (first run ≈ 186 billed minutes on a private repo).
 
 ## Owner & decisions (2026-10-14)
 - Owner is an experienced C#/.NET dev, new to Rust → explain in C# terms; add a `docs/learning/` note (≤ 1 page, C# comparison, pointer into our code) for every Rust concept introduced.
